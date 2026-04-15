@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API_BASE = "https://poet-basis-edited-yards.trycloudflare.com/api";
+const API_BASE = "https://uncolored-urgency-silo.ngrok-free.dev/api";
 
 function useFetch(endpoint, intervalMs = 30000) {
   const [data, setData] = useState(null);
