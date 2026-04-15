@@ -2,6 +2,7 @@ import { useFlights, useStats, useAlerts } from "./hooks/useFlightData";
 import StatsBar from "./components/StatsBar";
 import FlightTable from "./components/FlightTable";
 import AlertPanel from "./components/AlertPanel";
+import FlightMap from "./components/FlightMap";
 
 export default function App() {
   const { data: flights, loading: lFlights } = useFlights();
@@ -9,7 +10,16 @@ export default function App() {
   const { data: alerts, loading: lAlerts, refetch } = useAlerts();
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gridTemplateRows: "auto auto 1fr", gap: 16, padding: 20, minHeight: "100vh", background: "#f5f5f5", fontFamily: "sans-serif" }}>
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 320px",
+      gridTemplateRows: "auto auto 400px 1fr",
+      gap: 16,
+      padding: 20,
+      minHeight: "100vh",
+      background: "#f5f5f5",
+      fontFamily: "sans-serif",
+    }}>
       <header style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>FlightOps Dashboard</h1>
@@ -20,12 +30,25 @@ export default function App() {
           Live
         </div>
       </header>
+
       <div style={{ gridColumn: "1 / -1" }}>
         <StatsBar stats={stats} loading={lStats} />
       </div>
+
+      {/* Map */}
+      <div style={{ gridColumn: "1 / -1", background: "white", border: "0.5px solid #ddd", borderRadius: 12, padding: 16 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 500, margin: "0 0 12px 0" }}>Live flight map</h2>
+        <div style={{ height: 340 }}>
+          <FlightMap flights={flights} />
+        </div>
+      </div>
+
+      {/* Flight table */}
       <main style={{ background: "white", border: "0.5px solid #ddd", borderRadius: 12, padding: 16 }}>
         <FlightTable flights={flights} loading={lFlights} />
       </main>
+
+      {/* Alerts */}
       <aside style={{ background: "white", border: "0.5px solid #ddd", borderRadius: 12, padding: 16 }}>
         <AlertPanel alerts={alerts} loading={lAlerts} onResolve={refetch} />
       </aside>
