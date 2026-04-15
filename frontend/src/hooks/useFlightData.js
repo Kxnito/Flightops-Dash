@@ -9,7 +9,9 @@ function useFetch(endpoint, intervalMs = 30000) {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`);
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        headers: { "ngrok-skip-browser-warning": "true" }
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
       setError(null);
