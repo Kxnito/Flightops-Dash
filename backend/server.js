@@ -156,6 +156,7 @@ async function checkDelays() {
       });
 
       const data = res.data?.data?.[0];
+      console.log("AviationStack response:", JSON.stringify(res.data?.data?.[0]));
       if (!data) continue;
 
       const arrival = data.arrival;
