@@ -4,7 +4,9 @@ import { io } from "socket.io-client";
 const API_BASE = "https://api.flightops-dashboard.xyz/api";
 const SOCKET_URL = "https://api.flightops-dashboard.xyz";
 
-const socket = io(SOCKET_URL, { transports: ["websocket"] });
+const socket = io(SOCKET_URL, {
+  transports: ["polling", "websocket"]
+});
 
 function useFetch(endpoint, intervalMs = 30000) {
   const [data, setData] = useState(null);
@@ -33,19 +35,16 @@ function useFetch(endpoint, intervalMs = 30000) {
   return { data, loading, error, refetch: fetchData };
 }
 
-// Flights — updated via WebSocket, falls back to polling
 export function useFlights() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initial fetch
     fetch(`${API_BASE}/flights`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
 
-    // Live updates via WebSocket
     socket.on("flights", (flights) => {
       setData(flights);
       setLoading(false);
