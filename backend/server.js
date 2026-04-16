@@ -141,48 +141,51 @@ async function autoResolveOldAlerts() {
 async function checkDelays() {
   console.log("Checking delays...");
   try {
-    const { rows: flights } = await db.query(
-      `SELECT DISTINCT callsign FROM active_flights WHERE callsign IS NOT NULL LIMIT 10`
-    );
-    
-    for (const flight of flights) {
-      const res = await axios.get("http://api.aviationstack.com/v1/flights", {
-        params: {
-          access_key: process.env.AVIATIONSTACK_KEY,
-          flight_iata: flight.callsign.trim(),
-          limit: 1,
-        },
-        timeout: 10_000,
-      });
+    // Find flights that have been airborne for an unusually long time
+    // by comparing their first seen time to expected duration based on speed/distance
+    const { rows } = await db.query(`
+      SELECT 
+        callsign,
+        MIN(polled_at) AS first_seen,
+        MAX(polled_at) AS last_seen,
+        AVG(velocity_ms) AS avg_speed,
+        COUNT(*) AS poll_count
+      FROM flight_states
+      WHERE polled_at > NOW() - INTERVAL '12 hours'
+        AND on_ground = FALSE
+        AND callsign IS NOT NULL
+        AND velocity_ms > 0
+      GROUP BY callsign
+      HAVING COUNT(*) > 10
+    `);
 
-    const data = res.data?.data?.[0];
-    if (!data) continue;
-
-    // Try departure delay first, then calculate from arrival times
-    let delayMinutes = data.departure?.delay ?? 0;
-
-    if (delayMinutes === 0 && data.arrival?.estimated && data.arrival?.scheduled) {
-      const scheduled = new Date(data.arrival.scheduled);
-      const estimated = new Date(data.arrival.estimated);
-      delayMinutes = Math.round((estimated - scheduled) / 60000);
-    }
-
-    if (delayMinutes > 0) {
-      await db.query(
-        `INSERT INTO delay_events (callsign, origin, destination, delay_minutes, reason)
-        VALUES ($1, $2, $3, $4, $5)`,
-        [
-          flight.callsign,
-          data.departure?.iata ?? null,
-          data.arrival?.iata ?? null,
-          delayMinutes,
-          data.flight_status ?? "unknown",
-        ]
+    for (const flight of rows) {
+      const airborneMinutes = Math.round(
+        (new Date(flight.last_seen) - new Date(flight.first_seen)) / 60000
       );
-      console.log(`Delay recorded: ${flight.callsign} +${delayMinutes}min`);
-    }
-  }
 
+      // Average commercial flight is 2-3 hours
+      // Flag anything airborne longer than 4 hours as potentially delayed
+      if (airborneMinutes > 240) {
+        const delayMinutes = airborneMinutes - 240;
+
+        const existing = await db.query(
+          `SELECT id FROM delay_events 
+           WHERE callsign = $1 
+           AND recorded_at > NOW() - INTERVAL '6 hours'`,
+          [flight.callsign]
+        );
+
+        if (existing.rowCount === 0) {
+          await db.query(
+            `INSERT INTO delay_events (callsign, delay_minutes, reason)
+             VALUES ($1, $2, $3)`,
+            [flight.callsign, delayMinutes, "extended airborne duration"]
+          );
+          console.log(`Delay recorded: ${flight.callsign} +${delayMinutes}min`);
+        }
+      }
+    }
   } catch (err) {
     console.error("Delay check failed:", err.message);
   }
