@@ -130,6 +130,14 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => console.log("Client disconnected:", socket.id));
 });
 
+async function autoResolveOldAlerts() {
+  await db.query(
+    `UPDATE alerts SET resolved = TRUE 
+     WHERE resolved = FALSE 
+     AND created_at < NOW() - INTERVAL '1 hour'`
+  );
+}
+
 async function checkDelays() {
   console.log("Checking delays...");
   try {
@@ -183,6 +191,8 @@ httpServer.listen(PORT, () => {
   console.log(`FlightOps API running on port ${PORT}`);
   pollOpenSky();
   checkDelays();
+  autoResolveOldAlerts();
   setInterval(pollOpenSky, 30_000);
   setInterval(checkDelays, 300_000);
+  setInterval(autoResolveOldAlerts, 60_000); // runs every minute
 });
