@@ -3,21 +3,47 @@ import express from "express";
 import cors from "cors";
 import pg from "pg";
 import axios from "axios";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const db = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const httpServer = createServer(app);
+const io = new Server(httpServer, { cors: { origin: "*" } });
+
+const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const OPENSKY_URL = "https://opensky-network.org/api/states/all";
 const BBOX = { lamin: 24, lamax: 50, lomin: -125, lomax: -65 };
+const TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token";
+
+let accessToken = null;
+let tokenExpiry = 0;
+
+async function getToken() {
+  if (accessToken && Date.now() < tokenExpiry) return accessToken;
+  try {
+    const res = await axios.post(TOKEN_URL,
+      new URLSearchParams({ grant_type: "client_credentials", client_id: process.env.OPENSKY_CLIENT_ID, client_secret: process.env.OPENSKY_CLIENT_SECRET }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+    accessToken = res.data.access_token;
+    tokenExpiry = Date.now() + (res.data.expires_in - 60) * 1000;
+    console.log("Got new OpenSky token");
+    return accessToken;
+  } catch (err) {
+    console.error("Token fetch failed:", err.message);
+    return null;
+  }
+}
 
 async function pollOpenSky() {
   try {
-    const { data } = await axios.get(OPENSKY_URL, { params: BBOX, timeout: 10_000 });
+    const token = await getToken();
+    if (!token) return;
+    const { data } = await axios.get(OPENSKY_URL, { params: BBOX, timeout: 10_000, headers: { Authorization: `Bearer ${token}` } });
     if (!data?.states) return;
     const rows = data.states.map((s) => ({
       icao24: s[0], callsign: s[1]?.trim() || null, origin_country: s[2],
@@ -34,6 +60,8 @@ async function pollOpenSky() {
     );
     await detectAnomalies(rows);
     console.log(`[${new Date().toISOString()}] Polled ${rows.length} flights`);
+    const airborne = rows.filter(r => !r.on_ground && r.latitude && r.longitude);
+    io.emit("flights", airborne);
   } catch (err) {
     console.error("OpenSky poll failed:", err.message);
   }
@@ -57,7 +85,11 @@ async function createAlert(callsign, severity, message) {
     [callsign, message]
   );
   if (existing.rowCount === 0) {
-    await db.query(`INSERT INTO alerts (callsign, severity, message) VALUES ($1, $2, $3)`, [callsign, severity, message]);
+    const result = await db.query(
+      `INSERT INTO alerts (callsign, severity, message) VALUES ($1, $2, $3) RETURNING *`,
+      [callsign, severity, message]
+    );
+    io.emit("alert", result.rows[0]);
   }
 }
 
@@ -93,32 +125,14 @@ app.patch("/api/alerts/:id/resolve", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+  socket.on("disconnect", () => console.log("Client disconnected:", socket.id));
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`FlightOps API running on port ${PORT}`);
   pollOpenSky();
   setInterval(pollOpenSky, 30_000);
 });
-
-// Mock data fallback for when OpenSky is unavailable
-async function seedMockData() {
-  const mockFlights = [
-    { icao24: "a1b2c3", callsign: "AA291", origin_country: "United States", longitude: -100.5, latitude: 38.2, altitude_m: 11000, on_ground: false, velocity_ms: 250, heading: 90 },
-    { icao24: "d4e5f6", callsign: "UA884", origin_country: "United States", longitude: -95.3, latitude: 41.5, altitude_m: 10500, on_ground: false, velocity_ms: 240, heading: 45 },
-    { icao24: "g7h8i9", callsign: "DL102", origin_country: "United States", longitude: -87.6, latitude: 35.8, altitude_m: 9800, on_ground: false, velocity_ms: 230, heading: 120 },
-    { icao24: "j1k2l3", callsign: "WN445", origin_country: "United States", longitude: -112.0, latitude: 33.4, altitude_m: 11500, on_ground: false, velocity_ms: 255, heading: 270 },
-    { icao24: "m4n5o6", callsign: "BA172", origin_country: "United Kingdom", longitude: -75.2, latitude: 42.1, altitude_m: 12000, on_ground: false, velocity_ms: 260, heading: 80 },
-    { icao24: "p7q8r9", callsign: "AC881", origin_country: "Canada", longitude: -79.4, latitude: 43.6, altitude_m: 10000, on_ground: false, velocity_ms: 235, heading: 200 },
-  ];
-
-  for (const f of mockFlights) {
-    await db.query(
-      `INSERT INTO flight_states (icao24, callsign, origin_country, longitude, latitude, altitude_m, on_ground, velocity_ms, heading)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [f.icao24, f.callsign, f.origin_country, f.longitude, f.latitude, f.altitude_m, f.on_ground, f.velocity_ms, f.heading]
-    );
-  }
-  console.log("Mock flight data seeded.");
-}
-
-seedMockData();
