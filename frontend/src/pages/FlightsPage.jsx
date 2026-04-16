@@ -4,11 +4,11 @@ const msToKnots = (ms) => (ms ? Math.round(ms * 1.944) : "—");
 const mToFt = (m) => (m ? Math.round(m * 3.281).toLocaleString() : "—");
 
 const COLS = [
-  { key: "callsign", label: "Callsign" },
-  { key: "origin_country", label: "Country" },
-  { key: "altitude_m", label: "Altitude" },
-  { key: "velocity_ms", label: "Speed (kts)" },
-  { key: "heading", label: "Heading" },
+  { key: "callsign",        label: "Callsign",    width: "15%" },
+  { key: "origin_country",  label: "Country",     width: "30%" },
+  { key: "altitude_m",      label: "Altitude",    width: "20%" },
+  { key: "velocity_ms",     label: "Speed (kts)", width: "20%" },
+  { key: "heading",         label: "Heading",     width: "15%" },
 ];
 
 export default function FlightsPage({ flights, loading }) {
@@ -45,7 +45,10 @@ export default function FlightsPage({ flights, loading }) {
           <input type="text" placeholder="Search callsign or country..." value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
 
-        <table style={{ opacity: loading ? 0.4 : 1 }}>
+        <table style={{ opacity: loading ? 0.4 : 1, tableLayout: "fixed", width: "100%" }}>
+          <colgroup>
+            {COLS.map((col) => <col key={col.key} style={{ width: col.width }} />)}
+          </colgroup>
           <thead>
             <tr>
               {COLS.map((col) => (
