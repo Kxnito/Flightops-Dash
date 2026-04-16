@@ -131,6 +131,7 @@ io.on("connection", (socket) => {
 });
 
 async function checkDelays() {
+  console.log("Checking delays...");
   try {
     const { rows: flights } = await db.query(
       `SELECT DISTINCT callsign FROM active_flights WHERE callsign IS NOT NULL LIMIT 10`
