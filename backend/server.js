@@ -155,33 +155,34 @@ async function checkDelays() {
         timeout: 10_000,
       });
 
-      const data = res.data?.data?.[0];
-      console.log("AviationStack response:", JSON.stringify(res.data?.data?.[0]));
-      if (!data) continue;
+    const data = res.data?.data?.[0];
+    if (!data) continue;
 
-      const arrival = data.arrival;
-      if (!arrival?.estimated || !arrival?.scheduled) continue;
+    // Try departure delay first, then calculate from arrival times
+    let delayMinutes = data.departure?.delay ?? 0;
 
-      const scheduled = new Date(arrival.scheduled);
-      const estimated = new Date(arrival.estimated);
-      const delayMinutes = Math.round((estimated - scheduled) / 60000);
-
-      if (delayMinutes > 0) {
-        await db.query(
-          `INSERT INTO delay_events (callsign, origin, destination, delay_minutes, reason)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT DO NOTHING`,
-          [
-            flight.callsign,
-            data.departure?.iata ?? null,
-            data.arrival?.iata ?? null,
-            delayMinutes,
-            data.flight_status ?? "unknown",
-          ]
-        );
-        console.log(`Delay recorded: ${flight.callsign} +${delayMinutes}min`);
-      }
+    if (delayMinutes === 0 && data.arrival?.estimated && data.arrival?.scheduled) {
+      const scheduled = new Date(data.arrival.scheduled);
+      const estimated = new Date(data.arrival.estimated);
+      delayMinutes = Math.round((estimated - scheduled) / 60000);
     }
+
+    if (delayMinutes > 0) {
+      await db.query(
+        `INSERT INTO delay_events (callsign, origin, destination, delay_minutes, reason)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [
+          flight.callsign,
+          data.departure?.iata ?? null,
+          data.arrival?.iata ?? null,
+          delayMinutes,
+          data.flight_status ?? "unknown",
+        ]
+      );
+      console.log(`Delay recorded: ${flight.callsign} +${delayMinutes}min`);
+    }
+  }
+
   } catch (err) {
     console.error("Delay check failed:", err.message);
   }
