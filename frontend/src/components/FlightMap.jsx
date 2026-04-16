@@ -36,8 +36,8 @@ export default function FlightMap({ flights }) {
     <div style={{ height: "100%" }}>
       <MapContainer center={[39, -98]} zoom={4} style={{ height: "100%", width: "100%" }} scrollWheelZoom={true}>
         <TileLayer
-          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
-          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://cartodb.com/attributions">CartoDB</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         {validFlights.map((flight) => (
           <Marker key={flight.icao24} position={[flight.latitude, flight.longitude]} icon={planeIcon(flight.heading ?? 0)}>
