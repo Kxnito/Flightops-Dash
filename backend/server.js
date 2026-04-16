@@ -130,9 +130,58 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => console.log("Client disconnected:", socket.id));
 });
 
+async function checkDelays() {
+  try {
+    const { rows: flights } = await db.query(
+      `SELECT DISTINCT callsign FROM active_flights WHERE callsign IS NOT NULL LIMIT 10`
+    );
+    
+    for (const flight of flights) {
+      const res = await axios.get("http://api.aviationstack.com/v1/flights", {
+        params: {
+          access_key: process.env.AVIATIONSTACK_KEY,
+          flight_iata: flight.callsign.trim(),
+          limit: 1,
+        },
+        timeout: 10_000,
+      });
+
+      const data = res.data?.data?.[0];
+      if (!data) continue;
+
+      const arrival = data.arrival;
+      if (!arrival?.estimated || !arrival?.scheduled) continue;
+
+      const scheduled = new Date(arrival.scheduled);
+      const estimated = new Date(arrival.estimated);
+      const delayMinutes = Math.round((estimated - scheduled) / 60000);
+
+      if (delayMinutes > 0) {
+        await db.query(
+          `INSERT INTO delay_events (callsign, origin, destination, delay_minutes, reason)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT DO NOTHING`,
+          [
+            flight.callsign,
+            data.departure?.iata ?? null,
+            data.arrival?.iata ?? null,
+            delayMinutes,
+            data.flight_status ?? "unknown",
+          ]
+        );
+        console.log(`Delay recorded: ${flight.callsign} +${delayMinutes}min`);
+      }
+    }
+  } catch (err) {
+    console.error("Delay check failed:", err.message);
+  }
+}
+
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`FlightOps API running on port ${PORT}`);
   pollOpenSky();
+  checkDelays();
   setInterval(pollOpenSky, 30_000);
+  setInterval(checkDelays, 300_000);
 });
