@@ -1,7 +1,27 @@
+import { useFlightHistory } from "../hooks/useFlightData";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
 const mToFt = (m) => (m ? Math.round(m * 3.281).toLocaleString() : "—");
 const msToKnots = (ms) => (ms ? Math.round(ms * 1.944) : "—");
 
+function formatHour(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString([], { hour: "numeric", hour12: true });
+}
+
+function CustomTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: "#1e293b", border: "0.5px solid #334155", borderRadius: 6, padding: "8px 12px", fontSize: 11 }}>
+      <div style={{ color: "#94a3b8" }}>{new Date(d.hour).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", hour12: true })}</div>
+      <div style={{ color: "#38bdf8", fontWeight: 500, marginTop: 4 }}>{Number(d.flight_count).toLocaleString()} flights</div>
+    </div>
+  );
+}
+
 export default function DashboardPage({ stats, flights, alerts, loading }) {
+  const { data: history } = useFlightHistory();
   const topFlights = flights?.slice(0, 8) ?? [];
 
   return (
@@ -11,7 +31,6 @@ export default function DashboardPage({ stats, flights, alerts, loading }) {
         <p style={{ fontSize: 11, color: "#334155", marginTop: 4, letterSpacing: "0.05em" }}>REAL-TIME AIRSPACE · NORTH AMERICA</p>
       </div>
 
-      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
         <div className="stat-card">
           <div className="stat-label">Active flights</div>
@@ -32,7 +51,51 @@ export default function DashboardPage({ stats, flights, alerts, loading }) {
         </div>
       </div>
 
-      {/* Recent flights */}
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="section-title">Flight activity · last 24 hours</div>
+        <div style={{ height: 220 }}>
+          {history && history.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={history}>
+                <defs>
+                  <linearGradient id="flightGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="hour"
+                  tickFormatter={formatHour}
+                  tick={{ fill: "#334155", fontSize: 10 }}
+                  axisLine={{ stroke: "#1e293b" }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: "#334155", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={50}
+                  tickFormatter={(v) => v.toLocaleString()}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="flight_count"
+                  stroke="#38bdf8"
+                  strokeWidth={2}
+                  fill="url(#flightGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#1e293b", fontSize: 12 }}>
+              Collecting data — chart appears after 1 hour of tracking
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="section-title">Recent flights</div>
         <table>
@@ -62,7 +125,6 @@ export default function DashboardPage({ stats, flights, alerts, loading }) {
         </table>
       </div>
 
-      {/* Recent alerts */}
       <div className="card">
         <div className="section-title">Recent alerts</div>
         {alerts?.slice(0, 5).map((a) => (
