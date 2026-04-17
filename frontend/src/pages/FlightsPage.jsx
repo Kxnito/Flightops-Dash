@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import FlightMap from "../components/FlightMap";
 
 const msToKnots = (ms) => (ms ? Math.round(ms * 1.944) : "—");
 const mToFt = (m) => (m ? Math.round(m * 3.281).toLocaleString() : "—");
@@ -32,6 +33,8 @@ export default function FlightsPage({ flights, loading }) {
       });
   }, [flights, query, sortKey, sortDir]);
 
+  const showMap = query.length > 0;
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -39,11 +42,22 @@ export default function FlightsPage({ flights, loading }) {
         <p style={{ fontSize: 11, color: "#334155", marginTop: 4, letterSpacing: "0.05em" }}>{filtered.length.toLocaleString()} RESULTS</p>
       </div>
 
-      <div className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showMap ? 16 : 0 }}>
           <div className="section-title" style={{ margin: 0 }}>Active flights</div>
-          <input type="text" placeholder="Search callsign or country..." value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Search callsign or country..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
+
+        {showMap && (
+          <div style={{ height: 300, borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
+            <FlightMap flights={filtered} />
+          </div>
+        )}
 
         <table style={{ opacity: loading ? 0.4 : 1, tableLayout: "fixed", width: "100%" }}>
           <colgroup>

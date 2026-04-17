@@ -6,11 +6,11 @@ export default function MapPage({ flights }) {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.02em" }}>Live Map</h1>
         <p style={{ fontSize: 11, color: "#334155", marginTop: 4, letterSpacing: "0.05em" }}>
-          {flights?.length?.toLocaleString() ?? "—"} AIRCRAFT · UPDATES EVERY 30S
+          {flights?.length?.toLocaleString() ?? "—"} AIRCRAFT · USE FLIGHTS TAB TO FILTER BY CALLSIGN OR COUNTRY
         </p>
       </div>
       <div style={{ flex: 1, minHeight: 500, borderRadius: 10, overflow: "hidden", border: "0.5px solid #1e293b" }}>
-        <FlightMap flights={flights} dark={true} />
+        <FlightMap flights={flights} />
       </div>
     </div>
   );
