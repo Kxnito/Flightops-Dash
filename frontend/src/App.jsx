@@ -4,6 +4,11 @@ import DashboardPage from "./pages/DashboardPage";
 import FlightsPage from "./pages/FlightsPage";
 import AlertsPage from "./pages/AlertsPage";
 
+const NAV = [
+  { id: "dashboard", label: "Dashboard", icon: "▦" },
+  { id: "flights",   label: "Flights",   icon: "✈" },
+  { id: "alerts",    label: "Alerts",    icon: "⚠" },
+];
 
 export default function App() {
   const [page, setPage] = useState("dashboard");
