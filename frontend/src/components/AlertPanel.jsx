@@ -1,4 +1,5 @@
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = import.meta.env.VITE_API_URL || "https://api.flightops-dashboard.xyz/api";
+const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -10,7 +11,10 @@ function timeAgo(dateStr) {
 
 export default function AlertPanel({ alerts, loading, onResolve }) {
   async function resolveAlert(id) {
-    await fetch(`${API_BASE}/alerts/${id}/resolve`, { method: "PATCH" });
+    await fetch(`${API_BASE}/alerts/${id}/resolve`, {
+      method: "PATCH",
+      headers: API_KEY ? { "x-api-key": API_KEY } : {},
+    });
     onResolve();
   }
 

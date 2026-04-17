@@ -7,11 +7,22 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 const app = express();
-app.use(cors());
+
+const ALLOWED_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
+app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(express.json());
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: "*" } });
+const io = new Server(httpServer, { cors: { origin: ALLOWED_ORIGIN } });
+
+function requireApiKey(req, res, next) {
+  const key = process.env.API_KEY;
+  if (key && req.headers["x-api-key"] !== key) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  next();
+}
+app.use("/api", requireApiKey);
 
 const db = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -97,7 +108,7 @@ app.get("/api/flights", async (req, res) => {
   try {
     const { rows } = await db.query(`SELECT * FROM active_flights ORDER BY callsign`);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.get("/api/stats", async (req, res) => {
@@ -108,21 +119,21 @@ app.get("/api/stats", async (req, res) => {
       db.query(`SELECT ROUND(AVG(delay_minutes)) AS avg_delay FROM delay_events WHERE recorded_at > NOW() - INTERVAL '24 hours'`),
     ]);
     res.json({ activeFlights: parseInt(flights.rows[0].total), openAlerts: parseInt(alerts.rows[0].total), avgDelayMinutes: delays.rows[0].avg_delay ?? 0 });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.get("/api/alerts", async (req, res) => {
   try {
     const { rows } = await db.query(`SELECT * FROM alerts WHERE resolved = FALSE ORDER BY created_at DESC LIMIT 20`);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.patch("/api/alerts/:id/resolve", async (req, res) => {
   try {
     await db.query(`UPDATE alerts SET resolved = TRUE WHERE id = $1`, [req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
 
 app.get("/api/flights/history", async (req, res) => {
@@ -138,7 +149,7 @@ app.get("/api/flights/history", async (req, res) => {
       ORDER BY 1
     `);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
 
 io.on("connection", (socket) => {

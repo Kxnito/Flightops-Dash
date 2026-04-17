@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API_BASE = "https://api.flightops-dashboard.xyz/api";
+const API_BASE = import.meta.env.VITE_API_URL || "https://api.flightops-dashboard.xyz/api";
+const API_KEY = import.meta.env.VITE_API_KEY || "";
 
 function useFetch(endpoint, intervalMs = 30000) {
   const [data, setData] = useState(null);
@@ -9,7 +10,9 @@ function useFetch(endpoint, intervalMs = 30000) {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}${endpoint}`);
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        headers: API_KEY ? { "x-api-key": API_KEY } : {},
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
       setError(null);
