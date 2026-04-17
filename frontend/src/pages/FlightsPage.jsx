@@ -40,7 +40,7 @@ export default function FlightsPage({ flights, loading }) {
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
-  const showMap = query.length > 0;
+  const mapFlights = query.length > 0 ? filtered : flights;
 
   function handleSearch(val) {
     setQuery(val);
@@ -51,11 +51,18 @@ export default function FlightsPage({ flights, loading }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.02em" }}>Flights</h1>
-        <p style={{ fontSize: 11, color: "#334155", marginTop: 4, letterSpacing: "0.05em" }}>{filtered.length.toLocaleString()} RESULTS</p>
+        <p style={{ fontSize: 11, color: "#334155", marginTop: 4, letterSpacing: "0.05em" }}>
+          {filtered.length.toLocaleString()} RESULTS · {query ? "FILTERED" : "ALL AIRCRAFT"}
+        </p>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showMap ? 16 : 0 }}>
+      {/* Map — always visible, filters with search */}
+      <div style={{ height: 350, borderRadius: 10, overflow: "hidden", border: "0.5px solid #1e293b", marginBottom: 16 }}>
+        <FlightMap flights={mapFlights} />
+      </div>
+
+      <div className="card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div className="section-title" style={{ margin: 0 }}>Active flights</div>
           <input
             type="text"
@@ -64,12 +71,6 @@ export default function FlightsPage({ flights, loading }) {
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
-
-        {showMap && (
-          <div style={{ height: 300, borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
-            <FlightMap flights={filtered} />
-          </div>
-        )}
 
         <table style={{ opacity: loading ? 0.4 : 1, tableLayout: "fixed", width: "100%" }}>
           <colgroup>
@@ -100,44 +101,15 @@ export default function FlightsPage({ flights, loading }) {
           </tbody>
         </table>
 
-        {/* Pagination */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "8px 0" }}>
           <span style={{ fontSize: 11, color: "#334155" }}>
             Page {currentPage} of {totalPages}
           </span>
           <div style={{ display: "flex", gap: 6 }}>
-            <button
-              className="resolve-btn"
-              onClick={() => setPage(1)}
-              disabled={currentPage === 1}
-              style={{ opacity: currentPage === 1 ? 0.3 : 1 }}
-            >
-              first
-            </button>
-            <button
-              className="resolve-btn"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              style={{ opacity: currentPage === 1 ? 0.3 : 1 }}
-            >
-              prev
-            </button>
-            <button
-              className="resolve-btn"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}
-            >
-              next
-            </button>
-            <button
-              className="resolve-btn"
-              onClick={() => setPage(totalPages)}
-              disabled={currentPage === totalPages}
-              style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}
-            >
-              last
-            </button>
+            <button className="resolve-btn" onClick={() => setPage(1)} disabled={currentPage === 1} style={{ opacity: currentPage === 1 ? 0.3 : 1 }}>first</button>
+            <button className="resolve-btn" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ opacity: currentPage === 1 ? 0.3 : 1 }}>prev</button>
+            <button className="resolve-btn" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}>next</button>
+            <button className="resolve-btn" onClick={() => setPage(totalPages)} disabled={currentPage === totalPages} style={{ opacity: currentPage === totalPages ? 0.3 : 1 }}>last</button>
           </div>
         </div>
       </div>

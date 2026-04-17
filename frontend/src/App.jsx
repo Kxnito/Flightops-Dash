@@ -1,16 +1,9 @@
 import { useState } from "react";
 import { useFlights, useStats, useAlerts } from "./hooks/useFlightData";
 import DashboardPage from "./pages/DashboardPage";
-import MapPage from "./pages/MapPage";
 import FlightsPage from "./pages/FlightsPage";
 import AlertsPage from "./pages/AlertsPage";
 
-const NAV = [
-  { id: "dashboard", label: "Dashboard", icon: "▦" },
-  { id: "map",       label: "Live Map",  icon: "◎" },
-  { id: "flights",   label: "Flights",   icon: "✈" },
-  { id: "alerts",    label: "Alerts",    icon: "⚠" },
-];
 
 export default function App() {
   const [page, setPage] = useState("dashboard");
@@ -84,7 +77,6 @@ export default function App() {
       {/* Page content */}
       <div className="page">
         {page === "dashboard" && <DashboardPage stats={stats} flights={flights} alerts={alerts} loading={lStats} />}
-        {page === "map"       && <MapPage flights={flights} />}
         {page === "flights"   && <FlightsPage flights={flights} loading={lFlights} />}
         {page === "alerts"    && <AlertsPage alerts={alerts} loading={lAlerts} onResolve={refetch} />}
       </div>
