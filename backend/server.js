@@ -125,6 +125,22 @@ app.patch("/api/alerts/:id/resolve", async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get("/api/flights/history", async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT 
+        DATE_TRUNC('hour', polled_at) AS hour,
+        COUNT(DISTINCT icao24) AS flight_count
+      FROM flight_states
+      WHERE polled_at > NOW() - INTERVAL '24 hours'
+        AND on_ground = FALSE
+      GROUP BY 1
+      ORDER BY 1
+    `);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
   socket.on("disconnect", () => console.log("Client disconnected:", socket.id));
