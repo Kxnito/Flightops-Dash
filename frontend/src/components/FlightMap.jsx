@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
 function planeIcon(heading) {
   return L.divIcon({
     className: "",
-    html: `<div style="width:20px;height:20px;transform:rotate(${heading}deg);font-size:16px;line-height:20px;text-align:center;">✈</div>`,
+    html: `<div style="width:20px;height:20px;transform:rotate(${heading}deg);font-size:16px;line-height:20px;text-align:center;color:#38bdf8;">✈</div>`,
     iconSize: [20, 20],
     iconAnchor: [10, 10],
   });
